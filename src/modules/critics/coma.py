@@ -15,9 +15,9 @@ class COMACritic(nn.Module):
         self.output_type = "q"
 
         # Set up network layers
-        self.fc1 = nn.Linear(input_shape, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, self.n_actions)
+        self.fc1 = nn.Linear(input_shape, args.critic_mlp_layer_size)
+        self.fc2 = nn.Linear(args.critic_mlp_layer_size, args.critic_mlp_layer_size)
+        self.fc3 = nn.Linear(args.critic_mlp_layer_size, self.n_actions)
 
     def forward(self, batch, t=None):
         inputs = self._build_inputs(batch, t=t)

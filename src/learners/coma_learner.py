@@ -17,7 +17,7 @@ class COMALearner:
         self.last_target_update_step = 0
         self.critic_training_steps = 0
 
-        self.log_stats_t = -self.args.learner_log_interval - 1
+        #self.log_stats_t = -self.args.learner_log_interval - 1
 
         self.critic = COMACritic(scheme, args)
         self.target_critic = copy.deepcopy(self.critic)
@@ -86,16 +86,16 @@ class COMALearner:
             self._update_targets()
             self.last_target_update_step = self.critic_training_steps
 
-        if t_env - self.log_stats_t >= self.args.learner_log_interval:
-            ts_logged = len(critic_train_stats["critic_loss"])
-            for key in ["critic_loss", "critic_grad_norm", "td_error_abs", "q_taken_mean", "target_mean"]:
-                self.logger.log_stat(key, sum(critic_train_stats[key])/ts_logged, t_env)
+        # if t_env - self.log_stats_t >= self.args.learner_log_interval:
+        #     ts_logged = len(critic_train_stats["critic_loss"])
+        #     for key in ["critic_loss", "critic_grad_norm", "td_error_abs", "q_taken_mean", "target_mean"]:
+        #         self.logger.log_stat(key, sum(critic_train_stats[key])/ts_logged, t_env)
 
-            self.logger.log_stat("advantage_mean", (advantages * mask).sum().item() / mask.sum().item(), t_env)
-            self.logger.log_stat("coma_loss", coma_loss.item(), t_env)
-            self.logger.log_stat("agent_grad_norm", grad_norm, t_env)
-            self.logger.log_stat("pi_max", (pi.max(dim=1)[0] * mask).sum().item() / mask.sum().item(), t_env)
-            self.log_stats_t = t_env
+        #     self.logger.log_stat("advantage_mean", (advantages * mask).sum().item() / mask.sum().item(), t_env)
+        #     self.logger.log_stat("coma_loss", coma_loss.item(), t_env)
+        #     self.logger.log_stat("agent_grad_norm", grad_norm, t_env)
+        #     self.logger.log_stat("pi_max", (pi.max(dim=1)[0] * mask).sum().item() / mask.sum().item(), t_env)
+        #     self.log_stats_t = t_env
 
     def _train_critic(self, batch, rewards, terminated, actions, avail_actions, mask, bs, max_t):
         # Optimise critic
@@ -136,7 +136,7 @@ class COMALearner:
             loss.backward()
             grad_norm = th.nn.utils.clip_grad_norm_(self.critic_params, self.args.grad_norm_clip)
             self.critic_optimiser.step()
-            self.critic_training_steps += 1
+            #self.critic_training_steps += 1
 
             running_log["critic_loss"].append(loss.item())
             running_log["critic_grad_norm"].append(grad_norm)
@@ -149,7 +149,7 @@ class COMALearner:
 
     def _update_targets(self):
         self.target_critic.load_state_dict(self.critic.state_dict())
-        self.logger.console_logger.info("Updated target network")
+        #self.logger.console_logger.info("Updated target network")
 
     def cuda(self):
         self.mac.cuda()

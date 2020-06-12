@@ -4,7 +4,10 @@ from components.episode_buffer import EpisodeBatch
 from multiprocessing import Pipe, Process
 import numpy as np
 import torch as th
+import random
 
+from marl_envs.particle_envs.make_env import make_env
+from marl_envs.my_env.capture_target import CaptureTarget as CT
 
 # Based (very) heavily on SubprocVecEnv from OpenAI Baselines
 # https://github.com/openai/baselines/blob/master/baselines/common/vec_env/subproc_vec_env.py
@@ -17,9 +20,19 @@ class ParallelRunner:
 
         # Make subprocesses for the envs
         self.parent_conns, self.worker_conns = zip(*[Pipe() for _ in range(self.batch_size)])
-        env_fn = env_REGISTRY[self.args.env]
-        self.ps = [Process(target=env_worker, args=(worker_conn, CloudpickleWrapper(partial(env_fn, **self.args.env_args))))
-                            for worker_conn in self.worker_conns]
+
+        if args.env.startswith('CT'):
+            env_fn = CT(1,2,tuple(args.env_args['grid_dim']),tgt_random_move=args.env_args['target_rand_move'])
+        else:
+            # create env
+            env_fn = make_env(env_name, discrete_action_input=True, **args.env_args)
+            env_fn.seed(seed)
+
+        # env_fn = env_REGISTRY[self.args.env] --origin
+        # self.ps = [Process(target=env_worker, args=(worker_conn, CloudpickleWrapper(partial(env_fn, **self.args.env_args))))
+        #                     for worker_conn in self.worker_conns] --origin
+        self.ps = [Process(target=env_worker, args=(worker_conn, env_fn, args.gamma, args.seed+idx))
+                            for idx, worker_conn in enumerate(self.worker_conns)]
 
         for p in self.ps:
             p.daemon = True
@@ -82,7 +95,7 @@ class ParallelRunner:
         self.t = 0
         self.env_steps_this_run = 0
 
-    def run(self, test_mode=False):
+    def run(self, epi_count, test_mode=False):
         self.reset()
 
         all_terminated = False
@@ -97,7 +110,7 @@ class ParallelRunner:
 
             # Pass the entire batch of experiences up till now to the agents
             # Receive the actions for each agent at this timestep in a batch for each un-terminated env
-            actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, bs=envs_not_terminated, test_mode=test_mode)
+            actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=epi_count, bs=envs_not_terminated, test_mode=test_mode)
             cpu_actions = actions.to("cpu").numpy()
 
             # Update the actions taken
@@ -157,6 +170,7 @@ class ParallelRunner:
                     pre_transition_data["avail_actions"].append(data["avail_actions"])
                     pre_transition_data["obs"].append(data["obs"])
 
+
             # Add post_transiton data into the batch
             self.batch.update(post_transition_data, bs=envs_not_terminated, ts=self.t, mark_filled=False)
 
@@ -169,14 +183,14 @@ class ParallelRunner:
         if not test_mode:
             self.t_env += self.env_steps_this_run
 
-        # Get stats back for each env
-        for parent_conn in self.parent_conns:
-            parent_conn.send(("get_stats",None))
+        # # Get stats back for each env
+        # for parent_conn in self.parent_conns:
+        #     parent_conn.send(("get_stats",None))
 
-        env_stats = []
-        for parent_conn in self.parent_conns:
-            env_stat = parent_conn.recv()
-            env_stats.append(env_stat)
+        # env_stats = []
+        # for parent_conn in self.parent_conns:
+        #     env_stat = parent_conn.recv()
+        #     env_stats.append(env_stat)
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
@@ -188,14 +202,14 @@ class ParallelRunner:
 
         cur_returns.extend(episode_returns)
 
-        n_test_runs = max(1, self.args.test_nepisode // self.batch_size) * self.batch_size
-        if test_mode and (len(self.test_returns) == n_test_runs):
-            self._log(cur_returns, cur_stats, log_prefix)
-        elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
-            self._log(cur_returns, cur_stats, log_prefix)
-            if hasattr(self.mac.action_selector, "epsilon"):
-                self.logger.log_stat("epsilon", self.mac.action_selector.epsilon, self.t_env)
-            self.log_train_stats_t = self.t_env
+        # n_test_runs = max(1, self.args.test_nepisode // self.batch_size) * self.batch_size
+        # if test_mode and (len(self.test_returns) == n_test_runs):
+        #     self._log(cur_returns, cur_stats, log_prefix)
+        # elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
+        #     self._log(cur_returns, cur_stats, log_prefix)
+        #     if hasattr(self.mac.action_selector, "epsilon"):
+        #         self.logger.log_stat("epsilon", self.mac.action_selector.epsilon, self.t_env)
+        #     self.log_train_stats_t = self.t_env
 
         return self.batch
 
@@ -210,35 +224,41 @@ class ParallelRunner:
         stats.clear()
 
 
-def env_worker(remote, env_fn):
+def env_worker(remote, env_fn, gamma, seed):
+    random.seed(seed)
+    np.random.seed(seed)
+
     # Make environment
-    env = env_fn.x()
+    env = env_fn
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
             actions = data
             # Take a step in the environment
-            reward, terminated, env_info = env.step(actions)
+            a, obs, reward, terminated, valid, env_info = env.step(actions)
+            if step + 1 == env.get_env_info()['episode_limit']:
+                terminated = [1] * env.get_env_info()['n_agents']
             # Return the observations, avail_actions and state to make the next action
             state = env.get_state()
             avail_actions = env.get_avail_actions()
-            obs = env.get_obs()
             remote.send({
                 # Data for the next timestep needed to pick an action
                 "state": state,
                 "avail_actions": avail_actions,
                 "obs": obs,
                 # Rest of the data for the current timestep
-                "reward": reward,
-                "terminated": terminated,
+                "reward": gamma**step*reward[0],
+                "terminated": terminated[0],
                 "info": env_info
             })
+            step += 1
         elif cmd == "reset":
-            env.reset()
+            step = 0
+            obs = env.reset()
             remote.send({
                 "state": env.get_state(),
                 "avail_actions": env.get_avail_actions(),
-                "obs": env.get_obs()
+                "obs": obs
             })
         elif cmd == "close":
             env.close()
