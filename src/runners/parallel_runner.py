@@ -25,8 +25,8 @@ class ParallelRunner:
             env_fn = CT(1,2,tuple(args.env_args['grid_dim']),tgt_random_move=args.env_args['target_rand_move'])
         else:
             # create env
-            env_fn = make_env(env_name, discrete_action_input=True, **args.env_args)
-            env_fn.seed(seed)
+            env_fn = make_env(args.env, discrete_action_input=True, **args.env_args)
+            env_fn.seed(args.seed)
 
         # env_fn = env_REGISTRY[self.args.env] --origin
         # self.ps = [Process(target=env_worker, args=(worker_conn, CloudpickleWrapper(partial(env_fn, **self.args.env_args))))
@@ -192,13 +192,13 @@ class ParallelRunner:
         #     env_stat = parent_conn.recv()
         #     env_stats.append(env_stat)
 
-        cur_stats = self.test_stats if test_mode else self.train_stats
+        #cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
         log_prefix = "test_" if test_mode else ""
-        infos = [cur_stats] + final_env_infos
-        cur_stats.update({k: sum(d.get(k, 0) for d in infos) for k in set.union(*[set(d) for d in infos])})
-        cur_stats["n_episodes"] = self.batch_size + cur_stats.get("n_episodes", 0)
-        cur_stats["ep_length"] = sum(episode_lengths) + cur_stats.get("ep_length", 0)
+        # infos = [cur_stats] + final_env_infos
+        # cur_stats.update({k: sum(d.get(k, 0) for d in infos) for k in set.union(*[set(d) for d in infos])})
+        # cur_stats["n_episodes"] = self.batch_size + cur_stats.get("n_episodes", 0)
+        # cur_stats["ep_length"] = sum(episode_lengths) + cur_stats.get("ep_length", 0)
 
         cur_returns.extend(episode_returns)
 
