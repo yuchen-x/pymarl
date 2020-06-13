@@ -152,7 +152,7 @@ class ParallelRunner:
                     # Remaining data for this current timestep
                     post_transition_data["reward"].append((data["reward"],))
 
-                    episode_returns[idx] += data["reward"]
+                    episode_returns[idx] += self.args.gamma**self.t * (data["reward"] * self.env_info['n_agents'])
                     episode_lengths[idx] += 1
                     if not test_mode:
                         self.env_steps_this_run += 1
@@ -194,7 +194,7 @@ class ParallelRunner:
 
         #cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
-        log_prefix = "test_" if test_mode else ""
+        # log_prefix = "test_" if test_mode else ""
         # infos = [cur_stats] + final_env_infos
         # cur_stats.update({k: sum(d.get(k, 0) for d in infos) for k in set.union(*[set(d) for d in infos])})
         # cur_stats["n_episodes"] = self.batch_size + cur_stats.get("n_episodes", 0)
@@ -247,7 +247,7 @@ def env_worker(remote, env_fn, gamma, seed):
                 "avail_actions": avail_actions,
                 "obs": obs,
                 # Rest of the data for the current timestep
-                "reward": gamma**step*reward[0],
+                "reward": reward[0],
                 "terminated": terminated[0],
                 "info": env_info
             })

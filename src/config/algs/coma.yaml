@@ -1,22 +1,22 @@
 # --- COMA specific parameters ---
 
 action_selector: "multinomial"
-epsilon_start: 1.0
+epsilon_start: .5
 epsilon_finish: .01
-epsilon_anneal_time: 5000
+epsilon_anneal_time: 4000
 mask_before_softmax: False
 
 runner: "parallel"
 
-buffer_size: 2
-batch_size_run: 2
-batch_size: 2
+buffer_size: 8
+batch_size_run: 8
+batch_size: 8
 
 env_args:
   state_last_action: False # critic adds last action internally
 
-# update the target network every {} training steps
-target_update_interval: 16
+# update the target network every {} training episode
+target_update_interval: 32
 
 lr: 0.0005
 critic_lr: 0.0005

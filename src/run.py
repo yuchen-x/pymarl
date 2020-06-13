@@ -184,11 +184,12 @@ def run_sequential(args, logger):
                 episode_sample.to(args.device)
 
             learner.train(episode_sample, runner.t_env, episode)
-            learner.critic_training_steps += args.batch_size_run
+            if args.learner is 'coma_learner':
+                learner.critic_training_steps += args.batch_size_run
 
         # Execute test runs once in a while
-        n_test_runs = max(1, args.test_nepisode // runner.batch_size) + 1
-        if episode % (args.test_interval - (args.test_interval % runner.batch_size)) == 0:
+        n_test_runs = max(1, args.test_nepisode // args.batch_size_run) + 1
+        if episode % (args.test_interval - (args.test_interval % args.batch_size_run)) == 0:
 
             # logger.console_logger.info("t_env: {} / {}".format(runner.t_env, args.t_max))
             # logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
