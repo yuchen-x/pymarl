@@ -184,7 +184,7 @@ def run_sequential(args, logger):
                 episode_sample.to(args.device)
 
             learner.train(episode_sample, runner.t_env, episode)
-            if args.learner is 'coma_learner':
+            if args.learner == 'coma_learner':
                 learner.critic_training_steps += args.batch_size_run
 
         # Execute test runs once in a while
@@ -200,7 +200,7 @@ def run_sequential(args, logger):
             for _ in range(n_test_runs):
                 runner.run(episode, test_mode=True)
             test_returns.append(np.mean(runner.test_returns[0:args.test_nepisode]))
-            print(f"[{args.run_id}] [{episode}/{args.t_max}] Evaluate learned policies with averaged return {test_returns[-1]}")
+            print(f"[{args.run_id}] [{episode}/{args.t_max}] Evaluate learned policies with averaged return {test_returns[-1]}", flush=True)
             runner.test_returns = []
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
