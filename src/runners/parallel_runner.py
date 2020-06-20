@@ -149,7 +149,7 @@ class ParallelRunner:
                     env_terminated = False
                     if data["terminated"]:
                         final_env_infos.append(data["info"])
-                        if test_mode:
+                        if test_mode and 'battle_won' in data['info'].keys():
                             self.won_count.append(data["info"]['battle_won'])
                     if data["terminated"] and not data["info"].get("episode_limit", False):
                         env_terminated = True
