@@ -1,9 +1,11 @@
 import datetime
+import numpy as np
 import os
 import pprint
 import time
 import threading
 import torch as th
+import pickle
 from types import SimpleNamespace as SN
 from utils.logging import Logger
 from utils.timehelper import time_left, time_str
@@ -74,6 +76,10 @@ def evaluate_sequential(args, runner):
     runner.close_env()
 
 def run_sequential(args, logger):
+    won_stats = []
+
+    # create the dirs to save resutls
+    os.makedirs("./performance/" + args.save_dir + "/test", exist_ok=True)
 
     # Init runner so we can get env info
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
@@ -160,7 +166,9 @@ def run_sequential(args, logger):
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
-    while runner.t_env <= args.t_max:
+    #while runner.t_env <= args.t_max:
+    from tqdm import tqdm
+    for episode in tqdm(range(0, args.t_max, args.batch_size_run)):
 
         # Run for a whole episode at a time
         episode_batch = runner.run(test_mode=False)
@@ -179,17 +187,20 @@ def run_sequential(args, logger):
             learner.train(episode_sample, runner.t_env, episode)
 
         # Execute test runs once in a while
-        n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-        if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
+        n_test_runs = max(1, args.test_nepisode // runner.batch_size)+1
+        if episode % (args.test_interval - (args.test_interval % args.batch_size_run)) == 0:
 
-            logger.console_logger.info("t_env: {} / {}".format(runner.t_env, args.t_max))
-            logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
-                time_left(last_time, last_test_T, runner.t_env, args.t_max), time_str(time.time() - start_time)))
+            # logger.console_logger.info("t_env: {} / {}".format(runner.t_env, args.t_max))
+            # logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
+                # time_left(last_time, last_test_T, runner.t_env, args.t_max), time_str(time.time() - start_time)))
             last_time = time.time()
 
             last_test_T = runner.t_env
             for _ in range(n_test_runs):
                 runner.run(test_mode=True)
+
+            won_stats.append(np.mean(runner.won_count[0:args.test_nepisode]))
+            runner.won_count=[]
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
             model_save_time = runner.t_env
@@ -202,16 +213,20 @@ def run_sequential(args, logger):
             # use appropriate filenames to do critics, optimizer states
             learner.save_models(save_path)
 
-        episode += args.batch_size_run
+        #episode += args.batch_size_run
 
-        if (runner.t_env - last_log_T) >= args.log_interval:
-            logger.log_stat("episode", episode, runner.t_env)
-            logger.print_recent_stats()
-            last_log_T = runner.t_env
+        # if (runner.t_env - last_log_T) >= args.log_interval:
+        #     logger.log_stat("episode", episode, runner.t_env)
+        #     logger.print_recent_stats()
+        #     last_log_T = runner.t_env
 
+    save_test_data(args.run_id, won_stats, args.save_dir)
     runner.close_env()
     logger.console_logger.info("Finished Training")
 
+def save_test_data(run_id, data, save_dir):
+    with open("./performance/" + save_dir + "/test/test_perform" + str(run_id) + ".pickle", "wb") as handle:
+        pickle.dump(data, handle)
 
 def args_sanity_check(config, _log):
 
