@@ -79,7 +79,8 @@ class COMALearner:
         # Optimise agents
         self.agent_optimiser.zero_grad()
         coma_loss.backward()
-        grad_norm = th.nn.utils.clip_grad_norm_(self.agent_params, self.args.grad_norm_clip)
+        if self.args.grad_norm_clip:
+            grad_norm = th.nn.utils.clip_grad_norm_(self.agent_params, self.args.grad_norm_clip)
         self.agent_optimiser.step()
 
         if (self.critic_training_steps - self.last_target_update_step) / self.args.target_update_interval >= 1.0:
@@ -134,12 +135,13 @@ class COMALearner:
             loss = (masked_td_error ** 2).sum() / mask_t.sum()
             self.critic_optimiser.zero_grad()
             loss.backward()
-            grad_norm = th.nn.utils.clip_grad_norm_(self.critic_params, self.args.grad_norm_clip)
+            if self.args.grad_norm_clip:
+                grad_norm = th.nn.utils.clip_grad_norm_(self.critic_params, self.args.grad_norm_clip)
             self.critic_optimiser.step()
             #self.critic_training_steps += 1
 
             running_log["critic_loss"].append(loss.item())
-            running_log["critic_grad_norm"].append(grad_norm)
+            #running_log["critic_grad_norm"].append(grad_norm)
             mask_elems = mask_t.sum().item()
             running_log["td_error_abs"].append((masked_td_error.abs().sum().item() / mask_elems))
             running_log["q_taken_mean"].append((q_taken * mask_t).sum().item() / mask_elems)
