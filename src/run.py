@@ -167,6 +167,7 @@ def run_sequential(args, logger):
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
     #while runner.t_env <= args.t_max:
+    print(f"Current run id is {args.run_id}...", flush=True)
     from tqdm import tqdm
     for episode in tqdm(range(0, args.t_max, args.batch_size_run)):
 
