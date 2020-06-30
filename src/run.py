@@ -77,9 +77,11 @@ def evaluate_sequential(args, runner):
 
 def run_sequential(args, logger):
     won_stats = []
+    eval_returns = []
 
     # create the dirs to save resutls
     os.makedirs("./performance/" + args.save_dir + "/test", exist_ok=True)
+    os.makedirs("./performance/" + args.save_dir + "/won", exist_ok=True)
 
     # Init runner so we can get env info
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
@@ -201,7 +203,10 @@ def run_sequential(args, logger):
                 runner.run(test_mode=True)
 
             won_stats.append(np.mean(runner.won_count[0:args.test_nepisode]))
-            runner.won_count=[]
+            eval_returns.append(np.mean(runner.test_returns[0:args.test_nepisode]))
+            print(f"{[args.run_id]} Finished: {episode}/{args.t_max} won_rate: {won_stats[-1]} latested averaged eval returns {eval_returns[-1]} ...", flush=True)
+            runner.won_count = []
+            runner.test_returns = []
 
         if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
             model_save_time = runner.t_env
@@ -221,13 +226,19 @@ def run_sequential(args, logger):
         #     logger.print_recent_stats()
         #     last_log_T = runner.t_env
 
-    save_test_data(args.run_id, won_stats, args.save_dir)
+    save_test_data(args.run_id, eval_returns, args.save_dir)
+    save_won_data(args.run_id, won_stats, args.save_dir)
     runner.close_env()
     logger.console_logger.info("Finished Training")
 
 def save_test_data(run_id, data, save_dir):
     with open("./performance/" + save_dir + "/test/test_perform" + str(run_id) + ".pickle", "wb") as handle:
         pickle.dump(data, handle)
+
+def save_won_data(run_id, data, save_dir):
+    with open("./performance/" + save_dir + "/won/won_perform" + str(run_id) + ".pickle", "wb") as handle:
+        pickle.dump(data, handle)
+
 
 def args_sanity_check(config, _log):
 

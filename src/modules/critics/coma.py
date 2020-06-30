@@ -21,8 +21,8 @@ class COMACritic(nn.Module):
 
     def forward(self, batch, t=None):
         inputs = self._build_inputs(batch, t=t)
-        x = F.relu(self.fc1(inputs))
-        x = F.relu(self.fc2(x))
+        x = F.leaky_relu(self.fc1(inputs))
+        x = F.leaky_relu(self.fc2(x))
         q = self.fc3(x)
         return q
 
