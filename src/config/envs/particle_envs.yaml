@@ -38,6 +38,7 @@ env_args:
   flick_p: 0.0
   enable_boundary: False
   benchmark: False
+  discrete_mul: 1
 
 test_greedy: False
 test_nepisode: 10
