@@ -8,6 +8,7 @@ import random
 
 from marl_envs.particle_envs.make_env import make_env
 from marl_envs.my_env.capture_target import CaptureTarget as CT
+from marl_envs.my_env.box_pushing import BoxPushing as BP
 
 # Based (very) heavily on SubprocVecEnv from OpenAI Baselines
 # https://github.com/openai/baselines/blob/master/baselines/common/vec_env/subproc_vec_env.py
@@ -23,6 +24,9 @@ class ParallelRunner:
 
         if args.env.startswith('CT'):
             env_fn = CT(1,2,tuple(args.env_args['grid_dim']),tgt_random_move=args.env_args['target_rand_move'])
+        elif args.env.startswith('BP'):
+            env_fn = BP(**args.env_args)
+            env_fn.seed(args.seed)
         else:
             # create env
             env_fn = make_env(args.env, discrete_action_input=True, **args.env_args)
