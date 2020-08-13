@@ -2,6 +2,7 @@ env: BP
 
 env_args:
   continuing_episode: False
+  terminate_step: 100
   # difficulty: "7"
   # game_version: null
   # map_name: "3m"
