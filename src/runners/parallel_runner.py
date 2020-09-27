@@ -8,6 +8,7 @@ import random
 
 from marl_envs.particle_envs.make_env import make_env
 from marl_envs.my_env.capture_target import CaptureTarget as CT
+from marl_envs.my_env.capture_target_v2 import CaptureTarget as CT2
 from marl_envs.my_env.box_pushing import BoxPushing as BP
 from marl_envs.my_env.small_box_pushing import SmallBoxPushing as SBP
 
@@ -23,8 +24,13 @@ class ParallelRunner:
         # Make subprocesses for the envs
         self.parent_conns, self.worker_conns = zip(*[Pipe() for _ in range(self.batch_size)])
 
-        if args.env.startswith('CT'):
-            env_fn = CT(1,2,tuple(args.env_args['grid_dim']),tgt_random_move=args.env_args['target_rand_move'])
+        if args.env.startswith('CT2'):
+            env_fn = CT2(args.env_args['n_target'],
+                         args.env_args['n_agent'],
+                         tuple(args.env_args['grid_dim']),
+                         terminate_step=args.env_args['terminate_step'])
+        elif args.env.startswith('CT'):
+            env_fn = CT(1,2)
         elif args.env.startswith('BP'):
             env_fn = BP(**args.env_args)
             env_fn.seed(args.seed)
