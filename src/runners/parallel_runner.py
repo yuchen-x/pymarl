@@ -206,7 +206,7 @@ class ParallelRunner:
         #     env_stat = parent_conn.recv()
         #     env_stats.append(env_stat)
 
-        #cur_stats = self.test_stats if test_mode else self.train_stats
+        # cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
         # log_prefix = "test_" if test_mode else ""
         # infos = [cur_stats] + final_env_infos

@@ -44,8 +44,9 @@ class COMALearner:
 
         mask = mask.repeat(1, 1, self.n_agents).view(-1)
 
-        q_vals, critic_train_stats = self._train_critic(batch, rewards, terminated, actions, avail_actions,
-                                                        critic_mask, bs, max_t)
+        for _ in range(self.args.critic_litr):
+            q_vals, critic_train_stats = self._train_critic(batch, rewards, terminated, actions, avail_actions,
+                                                            critic_mask, bs, max_t)
 
         actions = actions[:,:-1]
 
