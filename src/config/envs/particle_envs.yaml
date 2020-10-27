@@ -39,6 +39,7 @@ env_args:
   enable_boundary: False
   benchmark: False
   discrete_mul: 1
+  config_name: "cross"
 
 test_greedy: False
 test_nepisode: 10
